@@ -4,39 +4,35 @@ import pytesseract
 import cv2
 import os
 
-# because our test file is inside container
-imPath = 'test.tiff'
+image_path = 'test.png'
 
+def process_image(image_path, method):
 
-print('-----------------OCR in Docker -----------------')
-intType = '1'
+	
+	# load the example image and convert it to grayscale
+	image = cv2.imread(image_path)
+	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-# load the example image and convert it to grayscale
-image = cv2.imread(imPath)
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+	# check to see if we should apply thresholding to preprocess the
+	# image
+	if method  == 'threshhold':
+		gray = cv2.threshold(gray, 0, 255,
+			cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 
+	# make a check to see if median blurring should be done to remove
+	# noise
+	elif method == 'blur':
+		gray = cv2.medianBlur(gray, 3)
 
-# check to see if we should apply thresholding to preprocess the
-# image
-if intType == '1':
-	gray = cv2.threshold(gray, 0, 255,
-		cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+	# write the grayscale image to disk as a temporary file so we can
+	# apply OCR to it
+	filename = "{}.png".format(os.getpid())
+	cv2.imwrite(filename, gray)
 
-# this is optional
-# make a check to see if median blurring should be done to remove
-# noise
-elif intType == '2':
-	gray = cv2.medianBlur(gray, 3)
+	# load the image as a PIL/Pillow image, apply OCR, and then delete
+	# the temporary file
+	text = pytesseract.image_to_string(Image.open(filename))
+	os.remove(filename)
+	print(text)
 
-# write the grayscale image to disk as a temporary file so we can
-# apply OCR to it
-filename = "{}.png".format(os.getpid())
-cv2.imwrite(filename, gray)
-
-# load the image as a PIL/Pillow image, apply OCR, and then delete
-# the temporary file
-text = pytesseract.image_to_string(Image.open(filename))
-os.remove(filename)
-print(text)
-
-print('-----------------END OF PROGRAM-----------------')
+process_image(image_path, 'threshold')
